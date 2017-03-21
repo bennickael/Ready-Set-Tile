@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+    <title>Game</title>
+<script type="text/javascript" src = "js/phaser.min.js"></script>
+     <style type="text/css">
+        body {
+            margin:0;
+
+        }
+    </style>
+</head>
+<body>
+<script type="text/javascript">
+var w = 400, h = 300;
+var game = new Phaser.Game(w,h,Phaser.CANVAS, '', { preload: preload, create: create,});
+
+var tile_width = 96,
+    tile_height = 96,
+    board_cols,
+    board_rows;
+
+var piecesGroup,
+    piecesAmount,
+    shuffledIndexArray = [];
+
+var timeText, 
+    gameOverText,
+    initTime ;
+
+function preload()
+     {
+        game.load.spritesheet("images", "image/touka.png", tile_width,tile_height);
+     }
+
+function create() 
+    {
+        prepareBoard();
+        timer(120,1000);
+
+        timeText = game.add.text(0,0,"Time Left: 120" ,{fill:"green"});
+        gameOverText = game.add.text((w/2)-100,300,"");
+     
+    }
+    
+function prepareBoard() 
+    {
+
+        var piecesIndex = 0,
+            i, j,
+            piece;
+
+        board_cols = Math.floor(game.world.width / tile_width);
+        board_rows = Math.floor(game.world.height / tile_height);
+        
+        piecesAmount = board_cols * board_rows;
+
+        shuffledIndexArray = createShuffledIndexArray();
+
+        piecesGroup = game.add.group();
+
+        for (i = 0; i < board_rows; i++)
+        {
+            for (j = 0; j < board_cols; j++)
+            {
+                if (shuffledIndexArray[piecesIndex]) {
+                    piece = piecesGroup.create(j * tile_width, i * tile_height, "images", shuffledIndexArray[piecesIndex]);
+                }
+                else { //initial position of black piece
+                    piece = piecesGroup.create(j * tile_width, i * tile_height);
+                    piece.black = true;
+                }
+                piece.name = 'piece' + i.toString() + 'x' + j.toString();
+                piece.currentIndex = piecesIndex;
+                piece.destIndex = shuffledIndexArray[piecesIndex];
+                piece.inputEnabled = true;
+                piece.events.onInputDown.add(selectPiece, this);
+                piece.posX = j;
+                piece.posY = i;
+                piecesIndex++;
+            }
+        }
+
+    }
+
+function selectPiece(piece)
+    {
+
+        var blackPiece = canMove(piece);
+
+        if (blackPiece) {
+            movePiece(piece, blackPiece);
+        }
+
+    }
+
+function canMove(piece) 
+    {
+
+        var foundBlackElem = false;
+
+        piecesGroup.children.forEach(function(element) {
+            if (element.posX === (piece.posX - 1) && element.posY === piece.posY && element.black ||
+                element.posX === (piece.posX + 1) && element.posY === piece.posY && element.black ||
+                element.posY === (piece.posY - 1) && element.posX === piece.posX && element.black ||
+                element.posY === (piece.posY + 1) && element.posX === piece.posX && element.black) {
+                foundBlackElem = element;
+                return;
+            }
+        });
+
+        return foundBlackElem;
+
+    }
+
+function movePiece(piece, blackPiece) 
+    {
+
+        var tmpPiece = {
+            posX: piece.posX,
+            posY: piece.posY,
+            currentIndex: piece.currentIndex
+        };
+
+        game.add.tween(piece).to({x: blackPiece.posX * tile_width, y: blackPiece.posY * tile_height}, 300, Phaser.Easing.Linear.None, true);
+
+        piece.posX = blackPiece.posX;
+        piece.posY = blackPiece.posY;
+        piece.currentIndex = blackPiece.currentIndex;
+        piece.name ='piece' + piece.posX.toString() + 'x' + piece.posY.toString();
+
+        blackPiece.posX = tmpPiece.posX;
+        blackPiece.posY = tmpPiece.posY;
+        blackPiece.currentIndex = tmpPiece.currentIndex;
+        blackPiece.name ='piece' + blackPiece.posX.toString() + 'x' + blackPiece.posY.toString();
+
+        checkIfFinished();
+
+    }
+
+function checkIfFinished() 
+    {
+
+        var isFinished = true;
+
+        piecesGroup.children.forEach(function(element) {
+            if (element.currentIndex !== element.destIndex) {
+                isFinished = false;
+                return;
+            }
+        });
+
+        if (isFinished) {
+            showFinishedText();
+        }
+
+    }
+
+function showFinishedText() 
+    {
+
+        var text = game.add.text(game.world.centerX, game.world.centerY, "Congratulations! \nYou made it!",{fill:"cyan"} );
+
+        text.anchor.set(0.5);
+
+    }
+
+function createShuffledIndexArray() 
+    {
+
+        var indexArray = [];
+
+        for (var i = 0; i < piecesAmount; i++)
+        {
+            indexArray.push(i);
+        }
+
+        return shuffle(indexArray);
+
+    }
+
+function shuffle(array) 
+    {
+    var counter = array.length,
+        temp,
+        index;
+
+    while (counter > 0)
+    {
+        index = Math.floor(Math.random() * counter);
+
+        counter--;
+
+        temp = array[counter];
+        array[counter] = array[index];
+        array[index] = temp;
+    }
+
+    return array;
+}
+function timer(initTime,microsec)
+    {
+    setInterval(function(){
+        initTime--;
+        if(initTime>=0){        
+            timeText.text = "Time Left: "+initTime;
+        }
+        else{
+            game._paused = true;
+            gameOverText.text = " Sorry Times Up",{fill: "green"}  
+        }
+    },microsec);
+}
+</script>
+</body>
+</html>
